@@ -93,37 +93,16 @@ export function useJsonProcessor() {
   }
 
   /**
-   * 将 JSON.parse 抛出的原生错误转为用户友好的中文提示
+   * 将原始文本转为安全的 HTML（仅转义，不高亮）
+   * 用于 JSON 解析失败时原样显示用户输入
    */
-  const friendlyError = (errMsg: string): string => {
-    const posMatch = errMsg.match(/position (\d+)(?: \(line (\d+) column (\d+)\))?/)
-    const location = posMatch
-      ? `（第 ${posMatch[2] || '?'} 行，第 ${posMatch[3] || '?'} 列）`
-      : ''
-
-    if (errMsg.includes('Bad control character')) {
-      return `字符串值中包含未转义的控制字符（如换行、缩进等）${location}\n请确保字符串用双引号包裹且内部特殊字符已转义`
-    }
-    if (errMsg.includes('Unexpected end of JSON input')) {
-      return `JSON 不完整，可能缺少闭合的 } 或 ] 括号${location}`
-    }
-    if (errMsg.includes('Unexpected token')) {
-      return `JSON 语法错误，可能存在多余的逗号或格式不正确${location}`
-    }
-    if (errMsg.includes("Expected ',' or '}'")) {
-      return `缺少逗号或闭合花括号 } ${location}`
-    }
-    if (errMsg.includes("Expected ':'")) {
-      return `键名后缺少冒号 : ${location}`
-    }
-    if (errMsg.includes('Unexpected string')) {
-      return `此处不应出现字符串，可能键名缺少引号或逗号${location}`
-    }
-    if (errMsg.includes('Unexpected number')) {
-      return `数字出现位置不正确${location}`
-    }
-
-    return `JSON 格式错误${location}：${errMsg.replace(/^SyntaxError:\s*/i, '').replace(/ in JSON at position \d+/i, '')}`
+  const escapeText = (text: string): string => {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>')
+      .replace(/ {2,}/g, (match: string) => '&nbsp;'.repeat(match.length))
   }
 
   /**
@@ -131,7 +110,7 @@ export function useJsonProcessor() {
    */
   const processJson = (jsonStr: string, mode: ProcessMode): JsonProcessResult => {
     if (!jsonStr || !jsonStr.trim()) {
-      return { content: '', success: false, error: '请输入 JSON 字符串' }
+      return { content: '', success: false }
     }
 
     try {
@@ -139,9 +118,9 @@ export function useJsonProcessor() {
       const indent = mode === ProcessMode.FORMAT ? 2 : undefined
       const processed = JSON.stringify(parsed, null, indent)
       return { content: processed, success: true }
-    } catch (e) {
-      const rawMsg = e instanceof SyntaxError ? e.message : 'JSON 解析失败'
-      return { content: '', success: false, error: friendlyError(rawMsg) }
+    } catch {
+      // 解析失败：返回原始输入，由 handleProcess 负责原样显示
+      return { content: jsonStr, success: false }
     }
   }
 
@@ -153,12 +132,16 @@ export function useJsonProcessor() {
     const result = processJson(input.value, mode)
 
     if (result.success) {
+      // 格式合法：显示语法高亮的格式化结果
       output.value = highlightJson(result.content)
       error.value = ''
+    } else if (result.content) {
+      // 格式不对：原样显示用户输入，不报错
+      output.value = escapeText(result.content)
+      error.value = ''
     } else {
-      // 格式不对时显示错误提示
       output.value = ''
-      error.value = result.error || ''
+      error.value = ''
     }
   }
 

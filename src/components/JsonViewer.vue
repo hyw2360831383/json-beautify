@@ -32,7 +32,7 @@
 
     <!-- 结果展示区 -->
     <div class="flex-1 overflow-auto relative">
-      <!-- 成功：显示语法高亮的结果 -->
+      <!-- 显示内容（格式化结果或原样输入） -->
       <div
         v-if="htmlContent"
         class="json-output w-full h-full px-4 py-3
@@ -43,33 +43,7 @@
         v-html="htmlContent"
       ></div>
 
-      <!-- 失败：显示错误信息 -->
-      <div
-        v-else-if="errorMessage"
-        class="w-full h-full px-4 py-3 text-sm font-mono flex items-start"
-      >
-        <div
-          class="border rounded-lg p-4 w-full"
-          :style="{
-            backgroundColor: 'var(--error-bg)',
-            borderColor: 'var(--error-border)'
-          }"
-        >
-          <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                 :style="{ color: 'var(--error-text)' }">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span class="font-semibold text-xs uppercase" :style="{ color: 'var(--error-text)' }">
-              解析错误
-            </span>
-          </div>
-          <p class="text-sm" :style="{ color: 'var(--error-text)' }">{{ errorMessage }}</p>
-        </div>
-      </div>
-
-      <!-- 空状态：提示用户操作 -->
+      <!-- 空状态 -->
       <div
         v-else
         class="absolute inset-0 flex flex-col items-center justify-center gap-3"
@@ -196,7 +170,6 @@ defineEmits<{
 
 const resultStatus = computed(() => {
   if (props.htmlContent) return 'JSON ✓'
-  if (props.errorMessage) return 'ERROR'
   return ''
 })
 
@@ -205,12 +178,6 @@ const resultStatusStyle = computed(() => {
     return {
       backgroundColor: 'var(--success-bg)',
       color: 'var(--success-text)',
-    }
-  }
-  if (props.errorMessage) {
-    return {
-      backgroundColor: 'var(--error-bg)',
-      color: 'var(--error-text)',
     }
   }
   return {}
