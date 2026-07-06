@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 主题 CSS 变量 ===== */
+:root {
+  /* 深色主题（默认） */
+  --app-bg: #0f172a;
+  --header-bg: #1e293b;
+  --header-border: #334155;
+  --panel-bg: #1e293b;
+  --editor-bg: #0f172a;
+  --editor-text: #e2e8f0;
+  --text-primary: #f1f5f9;
+  --text-muted: #64748b;
+  --border-color: #334155;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --success-text: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --error-text: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --error-border: rgba(239, 68, 68, 0.3);
+  --btn-text: #e2e8f0;
+  --btn-hover-bg: #334155;
+  --btn-border: #475569;
+  --btn-disabled: #475569;
+  --kbd-bg: #334155;
+  --kbd-text: #94a3b8;
+
+  /* 语法高亮颜色 */
+  --json-key: #93c5fd;
+  --json-string: #86efac;
+  --json-number: #fde68a;
+  --json-boolean: #c084fc;
+  --json-null: #f87171;
+  --json-bracket: #94a3b8;
+}
+
+/* 浅色主题 */
+[data-theme="light"] {
+  --app-bg: #f8fafc;
+  --header-bg: #ffffff;
+  --header-border: #e2e8f0;
+  --panel-bg: #ffffff;
+  --editor-bg: #f1f5f9;
+  --editor-text: #1e293b;
+  --text-primary: #0f172a;
+  --text-muted: #94a3b8;
+  --border-color: #e2e8f0;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --success-text: #16a34a;
+  --success-bg: rgba(22, 163, 74, 0.1);
+  --error-text: #dc2626;
+  --error-bg: rgba(220, 38, 38, 0.1);
+  --error-border: rgba(220, 38, 38, 0.3);
+  --btn-text: #334155;
+  --btn-hover-bg: #e2e8f0;
+  --btn-border: #cbd5e1;
+  --btn-disabled: #cbd5e1;
+  --kbd-bg: #e2e8f0;
+  --kbd-text: #64748b;
+
+  --json-key: #1d4ed8;
+  --json-string: #16a34a;
+  --json-number: #d97706;
+  --json-boolean: #7c3aed;
+  --json-null: #dc2626;
+  --json-bracket: #64748b;
+}
+
+/* 主题切换过渡 */
+.theme-transition {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* 语法高亮 span 样式 */
+.json-key { color: var(--json-key); }
+.json-string { color: var(--json-string); }
+.json-number { color: var(--json-number); }
+.json-boolean { color: var(--json-boolean); }
+.json-null { color: var(--json-null); }
+.json-bracket { color: var(--json-bracket); }
+
+/* 拖拽分隔条样式 */
+.resize-divider {
+  cursor: col-resize;
+  background-color: var(--panel-bg);
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  transition: background-color 0.2s ease;
+}
+.resize-divider:hover,
+.resize-divider.resizing {
+  background-color: var(--accent);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--btn-border);
+}
