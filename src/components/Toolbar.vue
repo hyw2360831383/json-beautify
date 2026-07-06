@@ -34,7 +34,7 @@
     </button>
 
     <!-- 主题切换 -->
-    <ThemeSwitcher v-model="currentTheme" @update:model-value="$emit('theme-change', $event)" />
+    <ThemeSwitcher :model-value="currentTheme" @update:model-value="$emit('theme-change', $event)" />
   </div>
 </template>
 
