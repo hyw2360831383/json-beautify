@@ -98,6 +98,8 @@ export function useJsonProcessor() {
   const currentMode = ref<ProcessMode>(ProcessMode.FORMAT)
   /** 是否有处理结果 */
   const hasResult = computed(() => output.value.length > 0 || error.value.length > 0)
+  /** JSON 格式是否合法（null = 无内容，true = 合法，false = 不合法） */
+  const isValidJson = ref<boolean | null>(null)
   /** 防抖定时器 ID */
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   /** watch 停止句柄（用于 onUnmounted 清理） */
@@ -146,13 +148,16 @@ export function useJsonProcessor() {
       // 格式合法：显示语法高亮的格式化结果
       output.value = highlightJson(result.content)
       error.value = ''
+      isValidJson.value = true
     } else if (result.content) {
       // 格式不对：原样显示用户输入，不报错
       output.value = escapeText(result.content)
       error.value = ''
+      isValidJson.value = false
     } else {
       output.value = ''
       error.value = ''
+      isValidJson.value = null
     }
   }
 
@@ -161,6 +166,7 @@ export function useJsonProcessor() {
     input.value = ''
     output.value = ''
     error.value = ''
+    isValidJson.value = null
     currentMode.value = ProcessMode.FORMAT
   }
 
@@ -171,6 +177,7 @@ export function useJsonProcessor() {
     if (!newVal || !newVal.trim()) {
       output.value = ''
       error.value = ''
+      isValidJson.value = null
       return
     }
 
@@ -190,6 +197,7 @@ export function useJsonProcessor() {
     output,
     error,
     hasResult,
+    isValidJson,
     currentMode,
     handleProcess,
     clear,

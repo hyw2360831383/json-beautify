@@ -2,7 +2,7 @@
   <!--
     JsonViewer 组件 - 右侧 JSON 结果显示区域
     以只读方式展示格式化/压缩后的 JSON，支持语法高亮
-    显示错误信息或空状态提示
+    显示状态指示灯或空状态提示，支持行号显示
     底部集成操作按钮（格式化 / 压缩 / 复制）
   -->
   <div class="flex flex-col h-full theme-transition">
@@ -14,49 +14,71 @@
         borderColor: 'var(--border-color)'
       }"
     >
-      <h2
-        class="text-sm font-semibold uppercase tracking-wider"
-        :style="{ color: 'var(--success-text)' }"
-      >
-        处理结果
-      </h2>
-      <!-- 状态标签 -->
+      <div class="flex items-center gap-2">
+        <h2
+          class="text-sm font-semibold uppercase tracking-wider"
+          :style="{ color: 'var(--success-text)' }"
+        >
+          处理结果
+        </h2>
+        <!-- 状态指示灯 -->
+        <span
+          v-if="htmlContent"
+          class="status-dot"
+          :class="statusDotClass"
+          :title="statusDotTitle"
+        ></span>
+      </div>
+      <!-- 行数统计 -->
       <span
-        v-if="resultStatus"
-        class="text-xs px-2 py-0.5 rounded font-mono"
-        :style="resultStatusStyle"
+        v-if="htmlContent"
+        class="text-xs"
+        :style="{ color: 'var(--text-muted)' }"
       >
-        {{ resultStatus }}
+        {{ outputLineCount }} 行
       </span>
     </div>
 
-    <!-- 结果展示区 -->
-    <div class="flex-1 overflow-auto relative">
-      <!-- 显示内容（格式化结果或原样输入） -->
+    <!-- 结果展示区：行号 + 内容 -->
+    <div ref="outputScrollRef" class="flex-1 flex overflow-hidden">
+      <!-- 行号列 -->
       <div
         v-if="htmlContent"
-        class="json-output w-full h-full px-4 py-3
-               text-sm font-mono leading-relaxed
-               select-text overflow-auto
-               whitespace-pre-wrap break-all"
-        :style="{ color: 'var(--text-primary)' }"
-        v-html="htmlContent"
-      ></div>
-
-      <!-- 空状态 -->
-      <div
-        v-else
-        class="absolute inset-0 flex flex-col items-center justify-center gap-3"
+        ref="lineNumbersRef"
+        class="line-numbers-col select-none overflow-hidden flex-shrink-0"
         :style="{ color: 'var(--text-muted)' }"
       >
-        <svg class="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-             :style="{ color: 'var(--text-muted)' }">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 5 4 6 4 7z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                d="M4 7l8 5 8-5" />
-        </svg>
-        <p class="text-sm">在左侧输入 JSON，结果将自动实时显示</p>
+        <pre class="line-numbers-inner">{{ outputLineNumbers }}</pre>
+      </div>
+
+      <!-- 内容区域 -->
+      <div class="flex-1 overflow-auto relative">
+        <!-- 显示内容（格式化结果或原样输入） -->
+        <div
+          v-if="htmlContent"
+          class="json-output w-full h-full px-4 py-3
+                 text-sm font-mono leading-relaxed
+                 select-text
+                 whitespace-pre-wrap break-all"
+          :style="{ color: 'var(--text-primary)' }"
+          v-html="htmlContent"
+        ></div>
+
+        <!-- 空状态 -->
+        <div
+          v-else
+          class="absolute inset-0 flex flex-col items-center justify-center gap-3"
+          :style="{ color: 'var(--text-muted)' }"
+        >
+          <svg class="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+               :style="{ color: 'var(--text-muted)' }">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 5 4 6 4 7z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M4 7l8 5 8-5" />
+          </svg>
+          <p class="text-sm">在左侧输入 JSON，结果将自动实时显示</p>
+        </div>
       </div>
     </div>
 
@@ -153,12 +175,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 
 const props = defineProps<{
   htmlContent: string
   errorMessage: string
   hasResult: boolean
+  isValidJson: boolean | null
   copyMessage: string
 }>()
 
@@ -168,19 +191,32 @@ defineEmits<{
   copy: []
 }>()
 
-const resultStatus = computed(() => {
-  if (props.htmlContent) return 'JSON ✓'
-  return ''
+const outputScrollRef = ref<HTMLDivElement | null>(null)
+const lineNumbersRef = ref<HTMLDivElement | null>(null)
+
+/** 输出内容的行数 */
+const outputLineCount = computed(() => {
+  if (!props.htmlContent) return 0
+  return (props.htmlContent.match(/<br>/g) || []).length + 1
 })
 
-const resultStatusStyle = computed(() => {
-  if (props.htmlContent) {
-    return {
-      backgroundColor: 'var(--success-bg)',
-      color: 'var(--success-text)',
-    }
-  }
-  return {}
+/** 行号文本 */
+const outputLineNumbers = computed(() => {
+  const count = outputLineCount.value
+  if (count === 0) return ''
+  return Array.from({ length: count }, (_, i) => i + 1).join('\n')
+})
+
+/** 状态指示灯 */
+const statusDotClass = computed(() => ({
+  'dot-valid': props.isValidJson === true,
+  'dot-invalid': props.isValidJson === false,
+}))
+
+const statusDotTitle = computed(() => {
+  if (props.isValidJson === true) return 'JSON 格式正确'
+  if (props.isValidJson === false) return 'JSON 格式有误，已原样显示'
+  return ''
 })
 </script>
 
@@ -192,5 +228,44 @@ const resultStatusStyle = computed(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* 行号列 */
+.line-numbers-col {
+  padding: 0.75rem 0;
+  text-align: right;
+  min-width: 3rem;
+  border-right: 1px solid var(--border-color);
+  background-color: var(--panel-bg);
+}
+
+.line-numbers-inner {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+  padding: 0 0.75rem 0 0.5rem;
+  margin: 0;
+  white-space: pre;
+  tab-size: 2;
+  overflow: hidden;
+}
+
+/* 状态指示灯 */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+}
+.dot-valid {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+.dot-invalid {
+  background-color: #eab308;
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.5);
 }
 </style>

@@ -86,6 +86,7 @@
           :html-content="output"
           :error-message="error"
           :has-result="hasResult"
+          :is-valid-json="isValidJson"
           :copy-message="showMessage ? clipboardMessage : ''"
           @format="handleFormat"
           @compress="handleCompress"
@@ -108,7 +109,7 @@ import JsonEditor from './components/JsonEditor.vue'
 import JsonViewer from './components/JsonViewer.vue'
 
 // ===== 引入 Hook =====
-const { input, output, error, hasResult, handleProcess, clear, dispose } = useJsonProcessor()
+const { input, output, error, hasResult, isValidJson, handleProcess, clear, dispose } = useJsonProcessor()
 const { message: clipboardMessage, showMessage, copyToClipboard } = useClipboard()
 const { currentTheme, setTheme } = useTheme()
 const { leftWidth, isDragging, onDividerMouseDown } = useResizableSplit()
