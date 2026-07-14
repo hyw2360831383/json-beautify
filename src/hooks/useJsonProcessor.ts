@@ -5,6 +5,83 @@ import { ProcessMode, type JsonProcessResult } from '@/types'
 const DEBOUNCE_DELAY = 300
 
 /**
+ * JSON 语法高亮核心逻辑（不含 &lt;br&gt; / &amp;nbsp; 转换）
+ * 适用于 white-space: pre 的 &lt;pre&gt; 元素，原生换行和空格会被保留
+ * 采用"标记-替换-还原"策略，确保键名和字符串值被正确区分
+ */
+export const highlightJsonCore = (rawJson: string): string => {
+  // 第一步：转义 HTML 特殊字符，防止 XSS
+  let html = rawJson
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  // 第二步：将 JSON 键名（"key":）替换为临时标记，避免与字符串值混淆
+  html = html.replace(
+    /"((?:[^"\\]|\\.)*)"(\s*:)/g,
+    (_, content: string, colon: string) => `\x00KEY\x00${content}\x00KEY_END\x00${colon}`
+  )
+
+  // 第三步：将剩余的字符串（即 JSON 中的值）包裹为高亮标签
+  html = html.replace(
+    /"((?:[^"\\]|\\.)*)"/g,
+    '<span class="json-string">"$1"</span>'
+  )
+
+  // 第四步：高亮数字
+  html = html.replace(
+    /(^|[\s:\[\,])(-?\d+\.?\d*(?:[eE][+-]?\d+)?)(?=[\s,\]}])/gm,
+    '$1<span class="json-number">$2</span>'
+  )
+
+  // 第五步：高亮布尔值
+  html = html.replace(
+    /(^|[\s:\[\,])(true|false)(?=[\s,\]}])/gm,
+    '$1<span class="json-boolean">$2</span>'
+  )
+
+  // 第六步：高亮 null
+  html = html.replace(
+    /(^|[\s:\[\,])(null)(?=[\s,\]}])/gm,
+    '$1<span class="json-null">$2</span>'
+  )
+
+  // 第七步：高亮括号
+  html = html.replace(
+    /([{}[\]])/g,
+    '<span class="json-bracket">$1</span>'
+  )
+
+  // 第八步：还原键名标记
+  html = html.replace(
+    /\x00KEY\x00(.*?)\x00KEY_END\x00/g,
+    '<span class="json-key">"$1"</span>'
+  )
+
+  return html
+}
+
+/**
+ * 将原始 JSON 文本转换为带语法高亮的 HTML（完整版，含 &lt;br&gt; / &amp;nbsp;）
+ * 适用于 white-space: pre-wrap 的 v-html 容器
+ * @param rawJson - 已验证通过、格式化为字符串的 JSON
+ * @returns 带 class 标签的 HTML 字符串
+ */
+export const highlightJson = (rawJson: string): string => {
+  let html = highlightJsonCore(rawJson)
+
+  // 保留换行符
+  html = html.replace(/\n/g, '<br>')
+
+  // 保留连续空格
+  html = html.replace(/ {2,}/g, (match: string) =>
+    '&nbsp;'.repeat(match.length)
+  )
+
+  return html
+}
+
+/**
  * JSON 处理 Hook
  * 负责 JSON 的格式化、压缩、验证及语法高亮解析
  * 支持输入变化时自动实时格式化
@@ -25,72 +102,6 @@ export function useJsonProcessor() {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   /** watch 停止句柄（用于 onUnmounted 清理） */
   let stopWatcher: WatchStopHandle | null = null
-
-  /**
-   * 将原始 JSON 文本转换为带语法高亮的 HTML
-   * 采用"标记-替换-还原"策略，确保键名和字符串值被正确区分
-   * @param rawJson - 已验证通过、格式化为字符串的 JSON
-   * @returns 带 class 标签的 HTML 字符串
-   */
-  const highlightJson = (rawJson: string): string => {
-    // 第一步：转义 HTML 特殊字符，防止 XSS
-    let html = rawJson
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-
-    // 第二步：将 JSON 键名（"key":）替换为临时标记，避免与字符串值混淆
-    html = html.replace(
-      /"((?:[^"\\]|\\.)*)"(\s*:)/g,
-      (_, content: string, colon: string) => `\x00KEY\x00${content}\x00KEY_END\x00${colon}`
-    )
-
-    // 第三步：将剩余的字符串（即 JSON 中的值）包裹为高亮标签
-    html = html.replace(
-      /"((?:[^"\\]|\\.)*)"/g,
-      '<span class="json-string">"$1"</span>'
-    )
-
-    // 第四步：高亮数字
-    html = html.replace(
-      /(^|[\s:\[,])(-?\d+\.?\d*(?:[eE][+-]?\d+)?)(?=[\s,\]}])/gm,
-      '$1<span class="json-number">$2</span>'
-    )
-
-    // 第五步：高亮布尔值
-    html = html.replace(
-      /(^|[\s:\[,])(true|false)(?=[\s,\]}])/gm,
-      '$1<span class="json-boolean">$2</span>'
-    )
-
-    // 第六步：高亮 null
-    html = html.replace(
-      /(^|[\s:\[,])(null)(?=[\s,\]}])/gm,
-      '$1<span class="json-null">$2</span>'
-    )
-
-    // 第七步：高亮括号
-    html = html.replace(
-      /([{}[\]])/g,
-      '<span class="json-bracket">$1</span>'
-    )
-
-    // 第八步：还原键名标记
-    html = html.replace(
-      /\x00KEY\x00(.*?)\x00KEY_END\x00/g,
-      '<span class="json-key">"$1"</span>'
-    )
-
-    // 第九步：保留换行符
-    html = html.replace(/\n/g, '<br>')
-
-    // 第十步：保留连续空格
-    html = html.replace(/ {2,}/g, (match: string) =>
-      '&nbsp;'.repeat(match.length)
-    )
-
-    return html
-  }
 
   /**
    * 将原始文本转为安全的 HTML（仅转义，不高亮）
